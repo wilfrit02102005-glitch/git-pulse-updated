@@ -1,0 +1,325 @@
+{% extends "base.html" %}
+{% block title %}Team Reports{% endblock %}
+{% block page_title %}
+<a class="btn btn-back btn-back-label" href="{{ url_for('dashboard') }}"
+   title="Back to Team Dashboard" aria-label="Back to Team Dashboard">← Back</a>
+Team Reports
+{% endblock %}
+{% block badge %}{{ repo_name or 'no data' }}{% endblock %}
+
+{% block topbar_extra %}
+<div class="d-flex align-items-center gap-2 flex-wrap">
+    <a class="btn btn-pulse btn-sm" href="{{ url_for('reports_export', fmt='csv', **range_query) }}"
+       title="Download this report as a CSV file">⬇ CSV</a>
+    <a class="btn btn-pulse btn-sm" href="{{ url_for('reports_export', fmt='pdf', **range_query) }}"
+       title="Download this report as a PDF file">⬇ PDF</a>
+</div>
+{% endblock %}
+
+{% block content %}
+
+{% if error or not view %}
+    <div class="glass p-4">
+        <h3>Unable to load team reports</h3>
+        <p class="muted">{{ error or 'No repository selected. Pick a repository from the selector in the top bar.' }}</p>
+    </div>
+{% else %}
+{% set rng = view.range %}
+{% set summary = view.summary %}
+
+<!-- ================================================================
+     RANGE SELECTOR
+=============================================================== -->
+<div class="glass card-pulse mb-4">
+    <div class="card-header-row">
+        <h2>Report Period</h2>
+        <span class="badge badge-glass">{{ rng.label }} · {{ rng.days }} days</span>
+    </div>
+    <form method="get" action="{{ url_for('reports') }}" class="d-flex gap-2 flex-wrap align-items-end">
+        <div>
+            <label class="form-label small muted mb-1">Preset</label>
+            <select name="period" class="form-select form-select-sm" aria-label="Preset range">
+                {% for value, label in range_presets %}
+                <option value="{{ value }}" {{ 'selected' if rng.period == value else '' }}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="form-label small muted mb-1">From</label>
+            <input type="date" name="from" class="form-control form-control-sm"
+                   value="{{ from_str }}" aria-label="Start date">
+        </div>
+        <div>
+            <label class="form-label small muted mb-1">To</label>
+            <input type="date" name="to" class="form-control form-control-sm"
+                   value="{{ to_str }}" aria-label="End date">
+        </div>
+        <button type="submit" class="btn btn-pulse btn-sm">Apply</button>
+    </form>
+</div>
+
+<!-- ================================================================
+     SUMMARY CARDS
+=============================================================== -->
+<div class="row g-4 stat-row">
+    <div class="col-6 col-xl-3">
+        <div class="glass card-pulse stat-card">
+            <div class="stat-icon ic-blue">👥</div>
+            <div class="stat-body">
+                <span class="stat-value">{{ summary.total_members }}</span>
+                <span class="stat-label">Total Members</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="glass card-pulse stat-card">
+            <div class="stat-icon ic-green">⚡</div>
+            <div class="stat-body">
+                <span class="stat-value">{{ summary.active_members }}</span>
+                <span class="stat-label">Active Members</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="glass card-pulse stat-card">
+            <div class="stat-icon ic-orange">◎</div>
+            <div class="stat-body">
+                <span class="stat-value">{{ summary.inactive_members }}</span>
+                <span class="stat-label">Inactive Members</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="glass card-pulse stat-card">
+            <div class="stat-icon ic-purple">✓</div>
+            <div class="stat-body">
+                <span class="stat-value">{{ summary.total_commits }}</span>
+                <span class="stat-label">Total Commits</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="glass card-pulse stat-card">
+            <div class="stat-icon ic-blue">⇄</div>
+            <div class="stat-body">
+                <span class="stat-value">{{ summary.pull_requests }}</span>
+                <span class="stat-label">Pull Requests</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="glass card-pulse stat-card">
+            <div class="stat-icon ic-green">⇃</div>
+            <div class="stat-body">
+                <span class="stat-value">{{ summary.merged_pull_requests }}</span>
+                <span class="stat-label">Merged PRs</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="glass card-pulse stat-card">
+            <div class="stat-icon ic-orange">◎</div>
+            <div class="stat-body">
+                <span class="stat-value">{{ summary.open_issues }}</span>
+                <span class="stat-label">Open Issues</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="glass card-pulse stat-card">
+            <div class="stat-icon ic-red">✎</div>
+            <div class="stat-body">
+                <span class="stat-value">{{ summary.code_reviews }}</span>
+                <span class="stat-label">Code Reviews</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ================================================================
+     CHARTS
+=============================================================== -->
+<div class="row g-4 mt-1">
+    <div class="col-lg-4">
+        <div class="glass card-pulse h-100">
+            <div class="card-header-row">
+                <h2>Commits per Member</h2>
+            </div>
+            <canvas id="reportsCommitsChart" class="chart-canvas"
+                    data-labels='{{ view.members|map(attribute="username")|list|tojson }}'
+                    data-values='{{ view.members|map(attribute="commits")|list|tojson }}'></canvas>
+            <div class="chart-empty" id="reportsCommitsEmpty">No commit data</div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="glass card-pulse h-100">
+            <div class="card-header-row">
+                <h2>Activity Score</h2>
+            </div>
+            <canvas id="reportsScoreChart" class="chart-canvas"
+                    data-labels='{{ view.members|map(attribute="username")|list|tojson }}'
+                    data-values='{{ view.members|map(attribute="activity_score")|list|tojson }}'></canvas>
+            <div class="chart-empty" id="reportsScoreEmpty">No score data</div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="glass card-pulse h-100">
+            <div class="card-header-row">
+                <h2>Weekly Activity</h2>
+            </div>
+            <canvas id="reportsWeeklyChart" class="chart-canvas"
+                    data-labels='{{ view.charts.weekly.labels|tojson }}'
+                    data-values='{{ view.charts.weekly["values"]|tojson }}'></canvas>
+            <div class="chart-empty" id="reportsWeeklyEmpty">No activity data</div>
+        </div>
+    </div>
+</div>
+
+<!-- ================================================================
+     MEMBER PERFORMANCE
+=============================================================== -->
+<div class="glass card-pulse mt-4">
+    <div class="card-header-row">
+        <h2>Member Performance</h2>
+        <span class="badge badge-glass">{{ view.members|length }} members</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-pulse align-middle">
+            <thead>
+                <tr>
+                    <th>Member</th>
+                    <th class="text-center">Commits</th>
+                    <th class="text-center">PRs</th>
+                    <th class="text-center">Merged</th>
+                    <th class="text-center">Reviews</th>
+                    <th class="text-center">Issues</th>
+                    <th>Status</th>
+                    <th class="text-center">Score</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in view.members %}
+                <tr class="hover-row">
+                    <td>
+                        <div class="member-cell">
+                            <img class="avatar" src="{{ m.avatar or url_for('static', filename='images/default-avatar.svg') }}" alt="{{ m.username }}">
+                            <div>
+                                <a class="member-name" href="{{ url_for('member_profile', username=m.username) }}">{{ m.username }}</a>
+                                <a class="ext-link" href="{{ m.url or ('https://github.com/' ~ m.username) }}" target="_blank" rel="noopener" title="GitHub profile">↗</a>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="text-center">{{ m.commits }}</td>
+                    <td class="text-center">{{ m.prs_created }}</td>
+                    <td class="text-center">{{ m.prs_merged }}</td>
+                    <td class="text-center">{{ m.prs_reviewed }}</td>
+                    <td class="text-center">{{ m.issues_created }}</td>
+                    <td>
+                        <span class="badge badge-status st-{{ (m.activity_status)|lower|replace(' ', '-') }}">{{ m.activity_status }}</span>
+                        <small class="muted d-block">{{ m.last_active_text }}</small>
+                    </td>
+                    <td class="text-center">
+                        <div class="score-wrap">
+                            <div class="score-bar"><div class="score-fill" style="width: {{ m.activity_score }}%"></div></div>
+                            <span class="score-num">{{ m.activity_score }}</span>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="8" class="muted text-center py-4">No members in the selected period.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ================================================================
+     TOP CONTRIBUTORS + INSIGHTS
+=============================================================== -->
+<div class="row g-4 mt-1">
+    <div class="col-lg-6">
+        <div class="glass card-pulse h-100">
+            <div class="card-header-row">
+                <h2>Top Contributors</h2>
+                <span class="badge badge-glass">top {{ view.top_contributors|length }}</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-pulse align-middle">
+                    <thead>
+                        <tr>
+                            <th class="text-center">#</th>
+                            <th>Username</th>
+                            <th class="text-center">Commits</th>
+                            <th class="text-center">Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in view.top_contributors %}
+                        <tr class="hover-row">
+                            <td class="text-center">
+                                <span class="badge badge-rank rank-{{ loop.index }}">{{ c.rank }}</span>
+                            </td>
+                            <td><a class="member-name" href="{{ url_for('member_profile', username=c.username) }}">{{ c.username }}</a></td>
+                            <td class="text-center">{{ c.commits }}</td>
+                            <td class="text-center">{{ c.activity_score }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" class="muted text-center py-4">No contributors.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="glass card-pulse h-100">
+            <div class="card-header-row">
+                <h2>Team Insights</h2>
+                <span class="badge badge-glass">{{ view.insights|length }}</span>
+            </div>
+            <div class="insights-list">
+                {% for ins in view.insights %}
+                <div class="insight-item">
+                    <span class="insight-icon">{{ ins.icon }}</span>
+                    <div class="insight-body">
+                        <div class="insight-title">
+                            <strong>{{ ins.title }}</strong>
+                            <span class="badge badge-glass">{{ ins.value }}</span>
+                        </div>
+                        <p class="insight-detail muted mb-0">{{ ins.detail }}</p>
+                    </div>
+                </div>
+                {% else %}
+                <p class="muted p-3 mb-0">No insights yet.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ================================================================
+     TEAM ANALYSIS
+=============================================================== -->
+<div class="glass card-pulse mt-4">
+    <div class="card-header-row">
+        <h2>Team Analysis</h2>
+        <span class="badge badge-glass">
+            {{ 'Claude AI' if view.ai.available and view.ai.engine == 'ai' else 'Rule-based' }}
+        </span>
+    </div>
+    <p class="muted px-3 mb-2">
+        {% if view.ai.available and view.ai.engine == 'ai' %}
+            Generated by Claude from the metrics above.
+        {% else %}
+            Generated from real GitHub metrics. Add an <code>ANTHROPIC_API_KEY</code> to .env for an AI-powered narrative.
+        {% endif %}
+    </p>
+    <p class="analysis-text px-3 pb-3 mb-0">{{ view.ai.summary or 'No analysis available.' }}</p>
+</div>
+
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+{% endblock %}

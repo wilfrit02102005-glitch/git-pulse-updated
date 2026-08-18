@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Team Members{% endblock %}
+{% block page_title %}
+<a class="btn btn-back btn-back-label" href="{{ url_for('dashboard') }}"
+   title="Back to Team Dashboard" aria-label="Back to Team Dashboard">← Back</a>
+Team Members
+{% endblock %}
+{% block badge %}{{ report.repo.name if report else 'no data' }}{% endblock %}
+
+{% block content %}
+
+{% if error or not report %}
+    <div class="glass p-4">
+        <h3>Unable to load team members</h3>
+        <p class="muted">{{ error or 'No repository selected. Pick a repository from the selector in the top bar.' }}</p>
+    </div>
+{% else %}
+
+<div class="glass card-pulse">
+    <div class="card-header-row">
+        <h2>Team Members</h2>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            {% if filter_status %}
+                <span class="badge badge-glass">{{ filter_title }} ({{ members|length }})</span>
+                <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('team_members') }}" title="Remove the status filter and show every member">✕ Clear Filter</a>
+            {% else %}
+                <span class="badge badge-glass">All Members ({{ members|length }})</span>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if filter_status %}
+    <p class="muted px-3 pb-0 mb-0 small">
+        Showing only <strong>{{ filter_title|lower }}</strong>. The count matches the dashboard's
+        {{ filter_title }} card. <a href="{{ url_for('team_members') }}">Show all members</a>.
+    </p>
+    {% endif %}
+
+    <div class="table-responsive">
+        <table class="table table-pulse align-middle">
+            <thead>
+                <tr>
+                    <th>Member</th>
+                    <th class="text-center">Type</th>
+                    <th class="text-center">Permission</th>
+                    <th class="text-center">Commits<br><small class="muted">last {{ activity_window|default('30') }}d</small></th>
+                    <th class="text-center">Total<br><small class="muted">all-time</small></th>
+                    <th class="text-center">PRs</th>
+                    <th class="text-center">Merged</th>
+                    <th class="text-center">Reviews</th>
+                    <th class="text-center">Issues</th>
+                    <th>Status</th>
+                    <th class="text-center">Score</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in members %}
+                <tr class="hover-row">
+                    <td>
+                        <div class="member-cell">
+                            <img class="avatar" src="{{ m.avatar or url_for('static', filename='images/default-avatar.svg') }}" alt="{{ m.username }}">
+                            <div>
+                                <a class="member-name" href="{{ url_for('member_profile', username=m.username) }}">{{ m.username }}</a>
+                                {% if m.is_owner %}<span class="badge badge-type badge-owner">owner</span>{% endif %}
+                                <a class="ext-link" href="{{ m.url or ('https://github.com/' ~ m.username) }}" target="_blank" rel="noopener" title="GitHub profile">↗</a>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="text-center"><span class="badge badge-glass">{{ m.role|default('collaborator') }}</span></td>
+                    <td class="text-center">
+                        <span class="badge badge-type badge-perm-{{ (m.permission|default('read'))|lower }}">{{ m.permission|default('read')|title }}</span>
+                    </td>
+                    <td class="text-center">{{ m.commits }}</td>
+                    <td class="text-center">{{ m.commits_all_time|default(m.commits) }}</td>
+                    <td class="text-center">{{ m.prs_created|default(m.pr_count) }}</td>
+                    <td class="text-center">{{ m.prs_merged|default(0) }}</td>
+                    <td class="text-center">{{ m.prs_reviewed|default(0) }}</td>
+                    <td class="text-center">{{ m.issues_created|default(m.issue_count) }}</td>
+                    <td>
+                        <span class="badge badge-status st-{{ (m.activity_status|default('INACTIVE'))|lower|replace(' ', '-') }}">{{ m.activity_status|default('INACTIVE') }}</span>
+                        <small class="muted d-block">{{ m.last_active_text|default('No activity') }}</small>
+                    </td>
+                    <td class="text-center">
+                        <div class="score-wrap" title="{{ m.ai_text|default(m.score_reason|default('')) }}">
+                            <div class="score-bar"><div class="score-fill" style="width: {{ m.activity_score }}%"></div></div>
+                            <span class="score-num">{{ m.activity_score }}</span>
+                        </div>
+                        {% if m.ai_text %}<small class="muted d-block text-center ai-insight">{{ m.ai_text }}</small>{% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="11" class="muted text-center py-4">No members found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endif %}
+
+{% endblock %}

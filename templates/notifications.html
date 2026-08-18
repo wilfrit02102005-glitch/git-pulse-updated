@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Notifications{% endblock %}
+{% block page_title %}Notifications{% endblock %}
+
+{% block content %}
+<div class="glass card-pulse mb-4">
+    <div class="card-header-row">
+        <h2>Notifications</h2>
+        <span class="badge badge-glass">System alerts & activity</span>
+    </div>
+    <p class="muted mb-0">Alerts from security scans, AI analysis, and recent repository activity.</p>
+</div>
+
+{% set all_notifications = [] %}
+
+{# Security findings #}
+{% for f in scan_findings %}
+    {% if f.severity == 'CRITICAL' %}
+        {% set _ = all_notifications.append({'type': 'critical', 'icon': '!', 'title': 'Critical: ' ~ f.description, 'detail': f.filename ~ ':' ~ f.line_number ~ ' — ' ~ f.recommendation, 'time': ''}) %}
+    {% elif f.severity == 'HIGH' %}
+        {% set _ = all_notifications.append({'type': 'warning', 'icon': '!', 'title': 'High: ' ~ f.description, 'detail': f.filename ~ ':' ~ f.line_number ~ ' — ' ~ f.recommendation, 'time': ''}) %}
+    {% endif %}
+{% endfor %}
+
+{# AI analysis alerts #}
+{% for a in analyses %}
+    {% set sev = a.result.get('severity', '') %}
+    {% if sev in ('high', 'critical') %}
+        <div class="glass card-pulse mb-3" style="padding:0; border-left: 3px solid var(--red);">
+            <div class="notification-item">
+                <div class="notification-icon ni-critical">!</div>
+                <div class="notification-body">
+                    <div class="notification-title">{{ a.result.get('problem', a.target) }}</div>
+                    <div class="notification-meta">{{ a.kind }} · {{ a.target }} · {{ a.created_at[:16].replace('T', ' ') }}</div>
+                </div>
+            </div>
+        </div>
+    {% elif sev == 'medium' %}
+        <div class="glass card-pulse mb-3" style="padding:0; border-left: 3px solid var(--orange);">
+            <div class="notification-item">
+                <div class="notification-icon ni-warning">i</div>
+                <div class="notification-body">
+                    <div class="notification-title">{{ a.result.get('problem', a.target) }}</div>
+                    <div class="notification-meta">{{ a.kind }} · {{ a.target }} · {{ a.created_at[:16].replace('T', ' ') }}</div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endfor %}
+
+{# Recent activity #}
+{% if recent_activity %}
+<div class="glass card-pulse mb-4">
+    <div class="card-header-row">
+        <h2>Recent Activity</h2>
+        <span class="badge badge-glass">{{ recent_activity|length }} events</span>
+    </div>
+    {% for ev in recent_activity %}
+    <div class="notification-item">
+        <div class="notification-icon ni-{{ 'success' if ev.type == 'push' else ('info' if ev.type == 'pull_request' else 'warning') }}">
+            {{ '&#8962;' if ev.type == 'push' else ('&#8644;' if ev.type == 'pull_request' else '&#9679;') }}
+        </div>
+        <div class="notification-body">
+            <div class="notification-title">@{{ ev.author|default(ev.actor|default('unknown')) }} {{ ev.action|default('activity') }}</div>
+            <div class="notification-meta">{{ ev.title|default('') }}{% if ev.relative %} · {{ ev.relative }}{% elif ev.date %} · {{ ev.date[:10] }}{% endif %}</div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{# Security scan summary #}
+{% if scan_findings %}
+<div class="glass card-pulse mb-4">
+    <div class="card-header-row">
+        <h2>Security Findings</h2>
+        <span class="badge badge-glass">{{ scan_findings|length }} findings</span>
+    </div>
+    {% for f in scan_findings[:10] %}
+    <div class="notification-item" style="border-left: 3px solid {{ 'var(--red)' if f.severity == 'CRITICAL' else ('var(--orange)' if f.severity == 'HIGH' else ('var(--blue)' if f.severity == 'MEDIUM' else 'var(--green)')) }};">
+        <div class="notification-icon ni-{{ 'critical' if f.severity == 'CRITICAL' else ('warning' if f.severity == 'HIGH' else 'info') }}">
+            {{ '!' if f.severity in ('CRITICAL', 'HIGH') else 'i' }}
+        </div>
+        <div class="notification-body">
+            <div class="notification-title"><span class="badge badge-sev sev-{{ f.severity|lower }}">{{ f.severity }}</span> {{ f.description }}</div>
+            <div class="notification-meta">{{ f.filename }}:{{ f.line_number }} — {{ f.recommendation }}</div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{# No notifications state #}
+{% if not analyses and not recent_activity and not scan_findings %}
+<div class="glass card-pulse">
+    <div class="empty-state">
+        <div class="empty-state-icon">&#9711;</div>
+        <h3>No notifications yet</h3>
+        <p>When security findings, AI analysis results, or activity events occur, they will appear here.</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,41 @@
+2026-08-18 19:58:43,645 | INFO | app | GITHUB_OWNER: not configured
+2026-08-18 19:58:43,645 | INFO | app | GITHUB_REPO: not configured
+2026-08-18 19:58:43,645 | INFO | app | GITHUB_TEAM: not configured
+2026-08-18 19:58:43,645 | INFO | app | GITHUB_TOKEN: not configured
+2026-08-18 19:58:43,645 | INFO | app | GITHUB_WEBHOOK_SECRET: not configured
+2026-08-18 19:58:43,645 | INFO | app | ANTHROPIC_API_KEY: not configured
+2026-08-18 19:58:43,653 | WARNING | app | Configuration warning: GITHUB_TOKEN is not configured. Set it in .env or log in with a Personal Access Token.
+2026-08-18 19:58:44,991 | INFO | app | GITHUB_OWNER: not configured
+2026-08-18 19:58:44,991 | INFO | app | GITHUB_REPO: not configured
+2026-08-18 19:58:44,991 | INFO | app | GITHUB_TEAM: not configured
+2026-08-18 19:58:44,996 | INFO | app | GITHUB_TOKEN: not configured
+2026-08-18 19:58:44,996 | INFO | app | GITHUB_WEBHOOK_SECRET: not configured
+2026-08-18 19:58:44,996 | INFO | app | ANTHROPIC_API_KEY: not configured
+2026-08-18 19:58:44,996 | WARNING | app | Configuration warning: GITHUB_TOKEN is not configured. Set it in .env or log in with a Personal Access Token.
+2026-08-18 20:00:23,253 | INFO | app | API refresh requested by manoj20027949-svg
+2026-08-18 20:00:41,788 | INFO | app | Repository selected: manoj20027949-svg/devops
+2026-08-18 20:00:43,806 | INFO | app | Repository selected: manoj20027949-svg/devops
+2026-08-18 20:00:45,912 | INFO | app | Repository selected: manoj20027949-svg/devops
+2026-08-18 20:00:48,070 | INFO | app | Repository selected: manoj20027949-svg/devops
+2026-08-18 20:00:50,113 | INFO | app | Repository selected: manoj20027949-svg/devops
+2026-08-18 20:00:51,783 | INFO | app | Repository selected: manoj20027949-svg/devops
+2026-08-18 20:00:53,833 | INFO | app | Repository selected: manoj20027949-svg/devops
+2026-08-18 20:00:56,364 | INFO | app | Repository selected: manoj20027949-svg/devops
+2026-08-18 20:00:58,253 | INFO | app | Repository selected: manoj20027949-svg/devops
+2026-08-18 20:01:00,065 | INFO | app | Repository selected: manoj20027949-svg/devops
+2026-08-18 20:01:01,992 | INFO | app | Repository selected: manoj20027949-svg/devops
+2026-08-18 20:01:58,492 | INFO | app | Repository selected: manoj20027949-svg/devops
+2026-08-18 20:02:01,007 | INFO | app | Repository selected: manoj20027949-svg/devops
+2026-08-18 20:02:03,185 | INFO | app | Repository selected: manoj20027949-svg/devops
+2026-08-18 20:02:05,410 | INFO | app | Repository selected: manoj20027949-svg/devops
+2026-08-18 20:02:07,513 | INFO | app | Repository selected: manoj20027949-svg/devops
+2026-08-18 20:02:09,682 | INFO | app | Repository selected: manoj20027949-svg/devops
+2026-08-18 20:02:11,472 | INFO | app | Repository selected: manoj20027949-svg/devops
+2026-08-18 20:02:13,539 | INFO | app | Repository selected: manoj20027949-svg/devops
+2026-08-18 20:02:15,472 | INFO | app | Repository selected: manoj20027949-svg/devops
+2026-08-18 20:02:17,280 | INFO | app | Repository selected: manoj20027949-svg/devops
+2026-08-18 20:02:19,182 | INFO | app | Repository selected: manoj20027949-svg/devops
+2026-08-18 20:06:25,417 | INFO | app | API refresh requested by manoj20027949-svg
+2026-08-18 20:17:40,753 | INFO | app | API refresh requested by manoj20027949-svg
+2026-08-18 20:19:38,965 | INFO | app | API refresh requested by manoj20027949-svg
+2026-08-18 20:21:00,752 | INFO | app | API refresh requested by manoj20027949-svg

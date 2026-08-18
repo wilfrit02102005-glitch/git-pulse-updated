@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}{{ profile.username }}{% endblock %}
+{% block page_title %}
+<a class="btn btn-icon btn-back" href="{{ url_for('team_members') }}"
+   title="Back to Team Members" aria-label="Back to Team Members">←</a>
+Member Profile
+{% endblock %}
+{% block badge %}@{{ profile.username }}{% endblock %}
+
+{% block content %}
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-4">
+        <div class="glass card-pulse">
+            <div class="member-hero">
+                <img class="avatar avatar-lg" src="{{ url_for('static', filename='images/default-avatar.svg') }}" alt="{{ profile.username }}">
+                <h2>@{{ profile.username }}</h2>
+                <p class="muted">
+                    <a href="https://github.com/{{ profile.username }}" target="_blank" rel="noopener">github.com/{{ profile.username }}</a>
+                </p>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mt-3">
+                <div>
+                    <div class="stat-value">{{ profile.member.activity_score }}</div>
+                    <div class="stat-label">Activity Score / 100</div>
+                </div>
+                <span class="badge badge-status st-{{ (profile.member.activity_status|default('INACTIVE'))|lower|replace(' ', '-') }}">
+                    {{ profile.member.activity_status|default('INACTIVE') }}
+                </span>
+            </div>
+            <p class="muted small mt-2 mb-0">{{ profile.member.score_reason }}</p>
+            {% if member_ai %}
+            <p class="small mt-2 mb-0">
+                <span class="badge badge-status st-{{ member_ai.level }}">{{ member_ai.status|replace('-', ' ')|title }}</span>
+                <span class="muted d-inline">{{ member_ai.text }}</span>
+            </p>
+            {% endif %}
+            <div class="repo-stats mt-3">
+                <span>{{ profile.member.commits }} commits</span>
+                <span>{{ profile.member.pr_count }} PRs</span>
+                <span>{{ profile.member.prs_reviewed }} reviews</span>
+                <span>{{ profile.member.issue_count }} issues</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="glass card-pulse h-100">
+            <div class="card-header-row">
+                <h2>Recent Commits</h2>
+                <span class="badge badge-glass">{{ profile.commits|length }}</span>
+            </div>
+            <div class="feed-list">
+                {% for c in profile.commits %}
+                <div class="feed-item">
+                    <div class="feed-icon ic-blue">⌥</div>
+                    <div class="feed-body">
+                        <div class="feed-title">{{ c.message }}</div>
+                        <div class="feed-meta"><code>{{ c.sha }}</code> · {{ (c.date or '')[:10] }}</div>
+                    </div>
+                </div>
+                {% else %}
+                <p class="muted p-3 mb-0">No commits in the selected period.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="glass card-pulse h-100">
+            <div class="card-header-row">
+                <h2>Pull Requests</h2>
+                <span class="badge badge-glass">{{ profile.pull_requests|length }}</span>
+            </div>
+            <div class="feed-list">
+                {% for pr in profile.pull_requests %}
+                <div class="feed-item">
+                    <div class="feed-icon ic-purple">⇄</div>
+                    <div class="feed-body">
+                        <a class="feed-title" href="{{ pr.html_url }}" target="_blank" rel="noopener">#{{ pr.number }} · {{ pr.title }}</a>
+                        <div class="feed-meta">
+                            {% if pr.merged %}<span class="badge badge-status st-merged">Merged</span>
+                            {% elif pr.state == 'open' %}<span class="badge badge-status st-open">Open</span>
+                            {% else %}<span class="badge badge-status st-closed">Closed</span>{% endif %}
+                            · {{ (pr.created_at or '')[:10] }}
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <p class="muted p-3 mb-0">No pull requests in the selected period.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="glass card-pulse h-100">
+            <div class="card-header-row">
+                <h2>Issues & Reviews</h2>
+            </div>
+            <h3 class="h6 px-3 pt-2">Issues ({{ profile.issues|length }})</h3>
+            <div class="feed-list">
+                {% for i in profile.issues %}
+                <div class="feed-item">
+                    <div class="feed-icon ic-orange">◎</div>
+                    <div class="feed-body">
+                        <a class="feed-title" href="{{ i.html_url }}" target="_blank" rel="noopener">#{{ i.number }} · {{ i.title }}</a>
+                        <div class="feed-meta">{{ i.state }} · {{ (i.created_at or '')[:10] }}</div>
+                    </div>
+                </div>
+                {% else %}
+                <p class="muted px-3 pt-2 mb-0">No issues authored in the selected period.</p>
+                {% endfor %}
+            </div>
+            <h3 class="h6 px-3 pt-3">Reviews ({{ profile.reviews|length }})</h3>
+            <div class="feed-list">
+                {% for r in profile.reviews %}
+                <div class="feed-item">
+                    <div class="feed-icon ic-green">✎</div>
+                    <div class="feed-body">
+                        <div class="feed-title">Reviewed PR #{{ r.pr }}</div>
+                        <div class="feed-meta">{{ r.state }} · {{ (r.submitted_at or '')[:10] }}</div>
+                    </div>
+                </div>
+                {% else %}
+                <p class="muted px-3 pt-2 mb-0">No reviews in the selected period.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="glass card-pulse h-100">
+            <div class="card-header-row"><h2>Languages</h2></div>
+            <canvas id="langMemberChart" class="chart-canvas"
+                    data-labels='{{ profile.languages.keys()|list|tojson }}'
+                    data-values='{{ profile.languages.values()|list|tojson }}'></canvas>
+            <div class="chart-empty" id="langMemberEmpty">No language data</div>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="glass card-pulse h-100">
+            <div class="card-header-row">
+                <h2>AI Coaching</h2>
+                <span class="badge badge-glass">{{ 'Claude AI' if ai_enabled else 'Rule-based' }}</span>
+            </div>
+            {% for s in suggestions %}
+            <div class="suggestion-card prio-{{ s.priority|lower }} mb-2">
+                <div class="sugg-top">
+                    <span class="badge badge-prio">{{ s.priority }}</span>
+                    <span class="muted small">{{ s.category }}</span>
+                </div>
+                <p class="sugg-summary mb-1">{{ s.summary }}</p>
+                <p class="sugg-detail muted mb-0">{{ s.detail }}</p>
+            </div>
+            {% else %}
+            <p class="muted p-3 mb-0">No coaching suggestions for this member yet.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+{% endblock %}

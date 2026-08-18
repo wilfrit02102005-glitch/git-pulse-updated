@@ -1,0 +1,968 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Team Dashboard{% endblock %}
+{% block badge %}{{ report.repo.name if report else 'no data' }}{% endblock %}
+
+{% block topbar_extra %}
+<button type="button" class="btn btn-pulse btn-sm" id="refreshBtn" title="Re-fetch collaborators, commits, PRs, issues and events from GitHub">↻ Refresh</button>
+{% endblock %}
+
+{% block content %}
+
+{% if error or not report %}
+    <div class="glass card-pulse">
+        <div class="empty-state">
+            <div class="empty-state-icon">&#9888;</div>
+            <h3>Unable to load dashboard</h3>
+            <p>{{ error or 'No repository selected. Pick a repository from the selector in the top bar.' }}</p>
+            <p class="muted" style="font-size:0.82rem;">
+                Select a repository from the top bar selector. Ensure your token has access to the
+                repository (private repos need the <code>repo</code> scope).
+            </p>
+        </div>
+    </div>
+{% else %}
+
+<script>window.GITPULSE_REPO = "{{ report.repo.name }}";</script>
+
+<!-- ================================================================
+     TAB 1: OVERVIEW
+=============================================================== -->
+<section class="tab-pane active" id="tab-overview">
+
+    <!-- Primary Summary Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <a href="#" class="stat-card-link" data-goto="tab-issues" title="View Issues">
+                <div class="glass card-pulse stat-card">
+                    <div class="stat-icon ic-orange">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/></svg>
+                    </div>
+                    <div class="stat-body">
+                        <span class="stat-value">{{ report.overview.open_issues|default(0) }}</span>
+                        <span class="stat-label">Issues</span>
+                        <div class="stat-sub">open</div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-6 col-lg-3">
+            <a href="#" class="stat-card-link" data-goto="tab-prs" title="View Pull Requests">
+                <div class="glass card-pulse stat-card">
+                    <div class="stat-icon ic-blue">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>
+                    </div>
+                    <div class="stat-body">
+                        <span class="stat-value">{{ report.overview.open_prs|default(0) }}</span>
+                        <span class="stat-label">Pull Requests</span>
+                        <div class="stat-sub">{{ report.overview.merged_prs|default(0) }} merged</div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-6 col-lg-3">
+            <a href="#" class="stat-card-link" data-goto="tab-commits" title="View Commits">
+                <div class="glass card-pulse stat-card">
+                    <div class="stat-icon ic-purple">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><line x1="12" y1="3" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="21"/></svg>
+                    </div>
+                    <div class="stat-body">
+                        <span class="stat-value">{{ report.overview.total_commits|default(0) }}</span>
+                        <span class="stat-label">Commits</span>
+                        <div class="stat-sub">last {{ activity_window }}d</div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-6 col-lg-3">
+            <a href="{{ url_for('team_members') }}" class="stat-card-link" title="View Contributors">
+                <div class="glass card-pulse stat-card">
+                    <div class="stat-icon ic-green">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    </div>
+                    <div class="stat-body">
+                        <span class="stat-value">{{ report.overview.contributors_count|default(0) }}</span>
+                        <span class="stat-label">Contributors</span>
+                        <div class="stat-sub">{{ report.overview.active_members|default(0) }} active</div>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Health Score + Activity + AI Insights Row -->
+    <div class="row g-3 mb-4">
+        <!-- Repository Health -->
+        <div class="col-lg-4">
+            <div class="glass card-pulse h-100">
+                <div class="card-header-row">
+                    <h2>Repository Health</h2>
+                    {% if health %}
+                    <div class="repo-health-score badge-status {{ 'st-active' if health.score >= 70 else ('st-merged' if health.score >= 45 else 'st-inactive') }}">{{ health.score }}</div>
+                    {% endif %}
+                </div>
+                {% if health %}
+                <p class="muted mb-3" style="font-size:0.85rem;">{{ health.summary }}</p>
+                {% for key, item in health.breakdown.items() %}
+                <div class="health-bar">
+                    <span class="health-bar-label">{{ item.label }}</span>
+                    <div class="health-bar-track">
+                        <div class="health-bar-fill" style="width: {{ (item.score / item.max * 100)|int }}%; background: {{ 'var(--green)' if item.score >= 18 else ('var(--accent)' if item.score >= 12 else 'var(--orange)') }};"></div>
+                    </div>
+                    <span class="health-bar-value" style="color: {{ 'var(--green)' if item.score >= 18 else ('var(--accent)' if item.score >= 12 else 'var(--orange)') }};">{{ item.score }}/{{ item.max }}</span>
+                </div>
+                {% endfor %}
+                {% else %}
+                <p class="muted mb-0">No data available for health scoring.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Repository Info -->
+        <div class="col-lg-4">
+            <div class="glass card-pulse h-100">
+                <div class="card-header-row">
+                    <h2>Repository</h2>
+                    <span class="badge badge-glass">{{ report.repo.default_branch }}</span>
+                </div>
+                <div class="repo-meta">
+                    <div class="repo-name">
+                        <a href="https://github.com/{{ report.repo.name }}" target="_blank" rel="noopener">{{ report.repo.name }}</a>
+                    </div>
+                    {% if report.repo.description %}<p class="muted" style="font-size:0.85rem;">{{ report.repo.description }}</p>{% endif %}
+                    <div class="repo-stats">
+                        <span>★ {{ report.repo.stars }}</span>
+                        <span>⑂ {{ report.repo.forks }}</span>
+                        <span>◎ {{ report.repo.open_issues }}</span>
+                    </div>
+                </div>
+                <div class="mt-3" style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <a href="{{ url_for('code_review') }}" class="btn btn-pulse btn-sm">Code Review</a>
+                    <a href="{{ url_for('reports') }}" class="btn btn-outline-secondary btn-sm">Team Reports</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Insights -->
+        <div class="col-lg-4">
+            <div class="glass card-pulse h-100">
+                <div class="card-header-row">
+                    <h2>AI Insights</h2>
+                    <span class="badge badge-glass">{{ 'Claude' if ai_enabled else 'Rule-based' }}</span>
+                </div>
+                <div class="insights-list">
+                    {% if report.overview.open_issues|default(0) > 0 %}
+                    <div class="insight-item">
+                        <div class="insight-icon icon-warning">!</div>
+                        <div class="insight-body">
+                            <div class="insight-title"><strong>{{ report.overview.open_issues|default(0) }} open issues</strong></div>
+                            <div class="insight-detail">Issues need attention and resolution.</div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if report.overview.open_prs|default(0) > 0 %}
+                    <div class="insight-item">
+                        <div class="insight-icon icon-info">&#8644;</div>
+                        <div class="insight-body">
+                            <div class="insight-title"><strong>{{ report.overview.open_prs|default(0) }} pull requests open</strong></div>
+                            <div class="insight-detail">{{ report.overview.merged_prs|default(0) }} PRs merged recently.</div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if report.overview.active_members|default(0) > 0 %}
+                    <div class="insight-item">
+                        <div class="insight-icon icon-success">&#10003;</div>
+                        <div class="insight-body">
+                            <div class="insight-title"><strong>{{ report.overview.active_members|default(0) }} active contributors</strong></div>
+                            <div class="insight-detail">Team activity is {{ 'healthy' if report.overview.active_members|default(0) >= 3 else 'moderate' }}.</div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if ai_errors_count > 0 %}
+                    <div class="insight-item">
+                        <div class="insight-icon icon-danger">!</div>
+                        <div class="insight-body">
+                            <div class="insight-title"><strong>{{ ai_errors_count }} AI-detected issues</strong></div>
+                            <div class="insight-detail">Code quality concerns found by analysis.</div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if report.overview.total_commits|default(0) > 0 %}
+                    <div class="insight-item">
+                        <div class="insight-icon icon-success">&#8962;</div>
+                        <div class="insight-body">
+                            <div class="insight-title"><strong>{{ report.overview.total_commits|default(0) }} commits</strong></div>
+                            <div class="insight-detail">Active development in last {{ activity_window }} days.</div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Secondary Stats + Charts -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-xl-2">
+            <a href="{{ url_for('team_members') }}" class="stat-card-link" title="View Team Members">
+                <div class="glass card-pulse stat-card">
+                    <div class="stat-icon ic-blue">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    </div>
+                    <div class="stat-body">
+                        <span class="stat-value">{{ report.overview.members|default(0) }}</span>
+                        <span class="stat-label">Members</span>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-6 col-xl-2">
+            <div class="glass card-pulse stat-card">
+                <div class="stat-icon ic-red">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/></svg>
+                </div>
+                <div class="stat-body">
+                    <span class="stat-value">{{ ai_errors_count }}</span>
+                    <span class="stat-label">AI Errors</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-2">
+            <div class="glass card-pulse stat-card">
+                <div class="stat-icon ic-green">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="m10 13.2 1.7 1.6 3.5-3.7"/></svg>
+                </div>
+                <div class="stat-body">
+                    <span class="stat-value">{{ ai_fixed_count }}</span>
+                    <span class="stat-label">AI Fixed</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-2">
+            <div class="glass card-pulse stat-card">
+                <div class="stat-icon ic-green">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                </div>
+                <div class="stat-body">
+                    <span class="stat-value">+{{ report.overview.total_additions|default(0) }} / −{{ report.overview.total_deletions|default(0) }}</span>
+                    <span class="stat-label">Lines Changed</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="glass card-pulse h-100">
+                <div class="card-header-row"><h2>Languages</h2></div>
+                <canvas id="languagesChart" class="chart-canvas"
+                        data-labels='{{ report.languages.keys()|list|tojson }}'
+                        data-values='{{ report.languages.values()|list|tojson }}'></canvas>
+                <div class="chart-empty" id="langEmpty">No language data</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Member Status + Activity -->
+    <div class="row g-3">
+        <div class="col-lg-6">
+            <div class="glass card-pulse h-100">
+                <div class="card-header-row"><h2>Member Activity</h2></div>
+                <canvas id="statusChart" class="chart-canvas"
+                        data-active="{{ report.overview.active_members|default(0) }}"
+                        data-inactive="{{ report.overview.inactive_members|default(0) }}"></canvas>
+                <div class="chart-empty" id="statusEmpty">No member data</div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="glass card-pulse h-100">
+                <div class="card-header-row">
+                    <h2>Recent Activity</h2>
+                    <span class="badge badge-glass">{{ report.activity_feed|default([])|length }} events</span>
+                </div>
+                <div style="max-height: 300px; overflow-y: auto;">
+                {% set feed = report.activity_feed|default([]) %}
+                {% for ev in feed[:8] %}
+                <div class="feed-item" style="padding: 8px 12px;">
+                    <div class="feed-icon ic-{{ 'green' if ev.type == 'push' else ('purple' if ev.type == 'pull_request' else 'orange') }}" style="width:28px; height:28px; font-size:0.75rem;">{{ '&#8962;' if ev.type == 'push' else ('&#8644;' if ev.type == 'pull_request' else '&#9679;') }}</div>
+                    <div class="feed-body">
+                        <div class="feed-title" style="font-size:0.82rem;">
+                            <strong>@{{ ev.author }}</strong>
+                            <span class="muted">{{ ev.action }}</span>
+                        </div>
+                        <div class="feed-meta" style="font-size:0.74rem;">
+                            {{ ev.title|default('')|truncate(50) }}
+                            <span>{{ ev.relative or (ev.date or '')[:10] }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="empty-state" style="padding: 24px;">
+                    <p class="muted mb-0">No recent activity.</p>
+                </div>
+                {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ================================================================
+     TAB 2: TEAM MEMBERS
+================================================================ -->
+<section class="tab-pane" id="tab-members">
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="glass card-pulse">
+                <div class="card-header-row">
+                    <h2>Team Members</h2>
+                    <span class="badge badge-glass">{{ report.members|length }} members</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-pulse align-middle">
+                        <thead>
+                            <tr>
+                                <th>Member</th>
+                                <th class="text-center">Type</th>
+                                <th class="text-center">Permission</th>
+                                <th class="text-center">Commits<br><small class="muted">last {{ activity_window }}d</small></th>
+                                <th class="text-center">Total<br><small class="muted">all-time</small></th>
+                                <th class="text-center">PRs</th>
+                                <th class="text-center">Merged</th>
+                                <th class="text-center">Reviews</th>
+                                <th class="text-center">Issues</th>
+                                <th>Status</th>
+                                <th class="text-center">Score</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for m in report.members %}
+                            <tr class="hover-row">
+                                <td>
+                                    <div class="member-cell">
+                                        <img class="avatar" src="{{ m.avatar or url_for('static', filename='images/default-avatar.svg') }}" alt="{{ m.username }}">
+                                        <div>
+                                            <a class="member-name" href="{{ url_for('member_profile', username=m.username) }}">{{ m.username }}</a>
+                                            {% if m.is_owner %}<span class="badge badge-type badge-owner">owner</span>{% endif %}
+                                            <a class="ext-link" href="{{ m.url or ('https://github.com/' ~ m.username) }}" target="_blank" rel="noopener" title="GitHub profile">↗</a>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="text-center"><span class="badge badge-glass">{{ m.role|default('collaborator') }}</span></td>
+                                <td class="text-center">
+                                    <span class="badge badge-type badge-perm-{{ (m.permission|default('read'))|lower }}">{{ m.permission|default('read')|title }}</span>
+                                </td>
+                                </td>
+                                <td class="text-center">{{ m.commits }}</td>
+                                <td class="text-center">{{ m.commits_all_time|default(m.commits) }}</td>
+                                <td class="text-center">{{ m.prs_created|default(m.pr_count) }}</td>
+                                <td class="text-center">{{ m.prs_merged|default(0) }}</td>
+                                <td class="text-center">{{ m.prs_reviewed|default(0) }}</td>
+                                <td class="text-center">{{ m.issues_created|default(m.issue_count) }}</td>
+                                <td>
+                                    <span class="badge badge-status st-{{ (m.activity_status|default('INACTIVE'))|lower|replace(' ', '-') }}">{{ m.activity_status|default('INACTIVE') }}</span>
+                                    <small class="muted d-block">{{ m.last_active_text|default('No activity') }}</small>
+                                </td>
+                                <td class="text-center">
+                                    <div class="score-wrap" title="{{ m.score_reason|default('') }}">
+                                        <div class="score-bar"><div class="score-fill" style="width: {{ m.activity_score }}%"></div></div>
+                                        <span class="score-num">{{ m.activity_score }}</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="11" class="muted text-center py-4">No members found.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="glass card-pulse mb-4">
+                <div class="card-header-row"><h2>Commits per Member</h2></div>
+                <canvas id="commitsChart" class="chart-canvas"
+                        data-labels='{{ report.members|map(attribute="username")|list|tojson }}'
+                        data-values='{{ report.members|map(attribute="commits")|list|tojson }}'></canvas>
+            </div>
+            <div class="glass card-pulse">
+                <div class="card-header-row"><h2>Activity Score</h2></div>
+                <canvas id="scoreChart" class="chart-canvas"
+                        data-labels='{{ report.members|map(attribute="username")|list|tojson }}'
+                        data-values='{{ report.members|map(attribute="activity_score")|list|tojson }}'></canvas>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ================================================================
+     TAB 3: ACTIVITY
+================================================================ -->
+<section class="tab-pane" id="tab-activity">
+    <div class="row g-4">
+        <div class="col-lg-12">
+            <div class="glass card-pulse h-100">
+                <div class="card-header-row">
+                    <h2>Recent Activity</h2>
+                    <span class="badge badge-glass"><span id="activityCount">{{ report.activity_feed|default([])|length }}</span> events · last {{ activity_window }}d</span>
+                </div>
+                <div class="p-3 pb-1 border-bottom border-light">
+                    <div class="row g-2">
+                        <div class="col-6 col-md-3">
+                            <select id="activityCategory" class="form-select form-select-sm" aria-label="Filter by category">
+                                <option value="">All types</option>
+                                <option value="commit">Commits</option>
+                                <option value="pull_request">Pull Requests</option>
+                                <option value="issue">Issues</option>
+                                <option value="member">Members</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <select id="activityAuthor" class="form-select form-select-sm" aria-label="Filter by author">
+                                <option value="">All authors</option>
+                                {% for ev in report.activity_feed|default([]) %}{% if ev.actor %}
+                                <option value="{{ ev.actor }}">@{{ ev.actor }}</option>
+                                {% endif %}{% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <input id="activitySearch" class="form-control form-control-sm" type="search" placeholder="Search activity…" aria-label="Search activity">
+                        </div>
+                        <div class="col-12 col-md-2">
+                            <button type="button" class="btn btn-pulse btn-sm w-100" id="activityApply">Apply</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="feed-list" id="activityFeed">
+                    {% for ev in report.activity_feed|default([]) %}
+                    <div class="feed-item" data-category="{{ ev.category|default(ev.type) }}" data-actor="{{ ev.actor|default('') }}" data-search="{{ (ev.title|default('') ~ ' ' ~ (ev.action|default('')))|lower }}">
+                        <div class="feed-icon ic-{{ 'green' if ev.type == 'push' else ('purple' if ev.type == 'pull_request' else 'orange') }}">{{ '⌥' if ev.type == 'push' else ('⇄' if ev.type == 'pull_request' else '◎') }}</div>
+                        <div class="feed-body">
+                            <div class="feed-title">
+                                <strong>@{{ ev.author }}</strong>
+                                <span class="muted">{{ ev.action }}</span>
+                                {% if ev.url %}<a class="ext-link" href="{{ ev.url }}" target="_blank" rel="noopener" title="View on GitHub">↗</a>{% endif %}
+                            </div>
+                            <div class="feed-meta">
+                                {{ ev.title|default('') }}{% if ev.sha %} · <code>{{ ev.sha }}</code>{% endif %}
+                                <span class="muted float-end">{{ ev.relative or (ev.date or '')[:10] }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="muted p-3 mb-0">No activity in the selected period.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ================================================================
+     TAB 4: COMMITS
+================================================================ -->
+<section class="tab-pane" id="tab-commits">
+    <div class="glass card-pulse">
+        <div class="card-header-row">
+            <h2>Recent Commits</h2>
+            <span class="badge badge-glass"><span id="commitCount">{{ report.pushes|default([])|length }}</span> shown</span>
+        </div>
+        <div class="p-3 pb-1 border-bottom border-light">
+            <div class="row g-2">
+                <div class="col-12 col-md-4">
+                    <input id="commitSearch" class="form-control form-control-sm" type="search" placeholder="Search commit messages…" aria-label="Search commits">
+                </div>
+                <div class="col-6 col-md-3">
+                    <select id="commitAuthor" class="form-select form-select-sm" aria-label="Filter by author">
+                        <option value="">All authors</option>
+                        {% for p in report.pushes|default([]) %}{% if p.author %}
+                        <option value="{{ p.author }}">@{{ p.author }}</option>
+                        {% endif %}{% endfor %}
+                    </select>
+                </div>
+                <div class="col-6 col-md-3">
+                    <select id="commitBranch" class="form-select form-select-sm" aria-label="Filter by branch">
+                        <option value="">All branches</option>
+                        <option value="main">main</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-pulse align-middle">
+                <thead>
+                    <tr>
+                        <th>Author</th>
+                        <th>Message</th>
+                        <th class="text-center">Files</th>
+                        <th class="text-center">+ / −</th>
+                        <th>Date</th>
+                        <th>SHA</th>
+                    </tr>
+                </thead>
+                <tbody id="commitsBody">
+                    {% for p in report.pushes|default([]) %}
+                    <tr class="hover-row commit-row" data-commit-sha="{{ p.full_sha|default(p.sha) }}" data-author="{{ p.author|default('') }}" data-search="{{ (p.message|default('') ~ ' ' ~ p.sha)|lower }}" data-branch="{{ p.branch|default('main') }}" title="Click to view commit details">
+                        <td><strong>@{{ p.author }}</strong></td>
+                        <td class="find-desc">{{ p.message|default('') }}</td>
+                        <td class="text-center">{{ p.files|default([])|length }}</td>
+                        <td class="text-center">
+                            <span class="text-success">+{{ (p.stats|default({})).additions|default(0) }}</span>
+                            <span class="text-danger">−{{ (p.stats|default({})).deletions|default(0) }}</span>
+                        </td>
+                        <td class="muted">{{ (p.date or '')[:16].replace('T', ' ') }}</td>
+                        <td><code>{{ p.sha }}</code></td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" class="muted text-center py-4" id="commitsEmpty">No commits in the selected period.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<!-- ================================================================
+     TAB 5: PULL REQUESTS
+================================================================ -->
+<section class="tab-pane" id="tab-prs">
+    <div class="glass card-pulse">
+        <div class="card-header-row">
+            <h2>Pull Requests</h2>
+            <span class="badge badge-glass"><span id="prCount">{{ report.pull_requests|default([])|length }}</span></span>
+        </div>
+        <div class="p-3 pb-1 border-bottom border-light">
+            <div class="row g-2">
+                <div class="col-12 col-md-5">
+                    <input id="prSearch" class="form-control form-control-sm" type="search" placeholder="Search PRs…" aria-label="Search pull requests">
+                </div>
+                <div class="col-6 col-md-3">
+                    <select id="prState" class="form-select form-select-sm" aria-label="Filter by state">
+                        <option value="">All states</option>
+                        <option value="open">Open</option>
+                        <option value="merged">Merged</option>
+                        <option value="closed">Closed</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-4">
+                    <select id="prAuthor" class="form-select form-select-sm" aria-label="Filter by author">
+                        <option value="">All authors</option>
+                        {% for pr in report.pull_requests|default([]) %}{% if pr.author %}
+                        <option value="{{ pr.author }}">@{{ pr.author }}</option>
+                        {% endif %}{% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-pulse align-middle">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Title</th>
+                        <th>Author</th>
+                        <th>Status</th>
+                        <th>Review</th>
+                        <th class="text-center">Changes</th>
+                        <th>Updated</th>
+                        <th class="text-center">AI</th>
+                    </tr>
+                </thead>
+                <tbody id="prsBody">
+                    {% for pr in report.pull_requests|default([]) %}
+                    <tr class="hover-row pr-row" data-pr="{{ pr.number }}" data-author="{{ pr.author|default('') }}" data-state="{{ 'merged' if pr.merged else pr.state }}" data-search="{{ (pr.title|default('') ~ ' #' ~ pr.number)|lower }}" title="Click to view PR details">
+                        <td><a href="{{ pr.html_url }}" target="_blank" rel="noopener">#{{ pr.number }}</a></td>
+                        <td class="find-desc">{{ pr.title }}</td>
+                        <td><strong>@{{ pr.author }}</strong></td>
+                        <td>
+                            {% if pr.merged %}<span class="badge badge-status st-merged">Merged</span>
+                            {% elif pr.state == 'open' %}<span class="badge badge-status st-open">Open</span>
+                            {% else %}<span class="badge badge-status st-closed">Closed</span>{% endif %}
+                        </td>
+                        <td>
+                            <span class="badge badge-glass">{{ pr.review_status|default('no_reviews')|replace('_', ' ') }}</span>
+                            {% if pr.reviewers %}<small class="muted d-block">{{ pr.reviewers|join(', ') }}</small>{% endif %}
+                        </td>
+                        <td class="text-center">
+                            <span class="text-success">+{{ pr.additions|default(0) }}</span>
+                            <span class="text-danger">−{{ pr.deletions|default(0) }}</span>
+                            <small class="muted d-block">{{ pr.changed_files|default(0) }} files</small>
+                        </td>
+                        <td class="muted">{{ (pr.updated_at or '')[:10] }}</td>
+                        <td class="text-center">
+                            <button class="btn btn-pulse btn-sm ai-pr-btn" data-pr="{{ pr.number }}">Analyze</button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="8" class="muted text-center py-4" id="prsEmpty">No pull requests found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <p class="muted small px-3 pb-2 mb-0">
+            AI analysis reviews code quality, potential bugs, security concerns and complexity.
+            It never approves or merges a pull request.
+        </p>
+    </div>
+</section>
+
+<!-- ================================================================
+     TAB 6: ISSUES
+================================================================ -->
+<section class="tab-pane" id="tab-issues">
+    <div class="glass card-pulse">
+        <div class="card-header-row">
+            <h2>Issues</h2>
+            <span class="badge badge-glass">Total: <span id="issueCount">{{ report.issues|default([])|length }}</span></span>
+        </div>
+        <div class="p-3 pb-1 border-bottom border-light">
+            <div class="row g-2">
+                <div class="col-12 col-md-5">
+                    <input id="issueSearch" class="form-control form-control-sm" type="search" placeholder="Search issues…" aria-label="Search issues">
+                </div>
+                <div class="col-6 col-md-3">
+                    <select id="issueState" class="form-select form-select-sm" aria-label="Filter by state">
+                        <option value="">All states</option>
+                        <option value="open">Open</option>
+                        <option value="closed">Closed</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-4">
+                    <select id="issueAuthor" class="form-select form-select-sm" aria-label="Filter by author">
+                        <option value="">All authors</option>
+                        {% for i in report.issues|default([]) %}{% if i.author %}
+                        <option value="{{ i.author }}">@{{ i.author }}</option>
+                        {% endif %}{% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="px-3 py-2 border-bottom border-light d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <span class="muted small" id="issueFilteredCount"></span>
+            <span class="muted small d-none d-md-inline">Click an issue row to view its full details.</span>
+        </div>
+
+        <div id="issuesListView">
+            <div class="table-responsive">
+                <table class="table table-pulse align-middle">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Title</th>
+                            <th>Author</th>
+                            <th>Labels</th>
+                            <th>Status</th>
+                            <th>Assigned</th>
+                            <th>Created</th>
+                            <th class="text-center">AI</th>
+                        </tr>
+                    </thead>
+                    <tbody id="issuesBody">
+                        {% for i in report.issues|default([]) %}
+                        <tr class="hover-row issue-row" data-issue="{{ i.number }}" data-author="{{ i.author|default('') }}" data-state="{{ i.state }}" data-search="{{ (i.title|default('') ~ ' #' ~ i.number)|lower }}" title="Click to view issue details">
+                            <td><a href="{{ i.html_url }}" target="_blank" rel="noopener">#{{ i.number }}</a></td>
+                            <td class="issue-title">{{ i.title }}</td>
+                            <td><strong>@{{ i.author }}</strong></td>
+                            <td>
+                                {% for label in i.labels|default([]) %}<span class="badge badge-glass">{{ label }}</span> {% endfor %}
+                            </td>
+                            <td>
+                                {% if i.state == 'open' %}<span class="badge badge-status st-open">Open</span>
+                                {% else %}<span class="badge badge-status st-closed">Closed</span>{% endif %}
+                            </td>
+                            <td class="muted">{{ i.assignees|default([])|join(', ') or '—' }}</td>
+                            <td class="muted">{{ (i.created_at or '')[:10] }}</td>
+                            <td class="text-center">
+                                <button class="btn btn-pulse btn-sm ai-issue-btn" data-issue="{{ i.number }}">Analyze</button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="8" class="muted text-center py-4" id="issuesEmpty">No issues found.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="px-3 py-2 border-top border-light d-flex flex-wrap align-items-center justify-content-between gap-2" id="issuesPagination" hidden>
+                <span class="muted small"></span>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-pulse btn-sm" id="issuesPrev">&larr; Prev</button>
+                    <span class="small" id="issuesPageInfo">Page 1 of 1</span>
+                    <button type="button" class="btn btn-pulse btn-sm" id="issuesNext">Next &rarr;</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="issueDetailView" class="p-3" hidden>
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                <button type="button" class="btn btn-pulse btn-sm" id="issueBackBtn">&larr; Back to issues</button>
+                <a href="#" target="_blank" rel="noopener" class="btn btn-pulse btn-sm" id="issueOpenGithub">Open in GitHub</a>
+            </div>
+            <div id="issueDetailBody" class="find-desc"></div>
+        </div>
+    </div>
+</section>
+
+<!-- ================================================================
+     TAB 7: AI ANALYSIS
+================================================================ -->
+<section class="tab-pane" id="tab-ai-analysis">
+    <div class="glass card-pulse mb-4">
+        <div class="card-header-row">
+            <h2>Repository Health Analysis</h2>
+            <span class="badge badge-glass">{{ 'Claude AI' if ai_enabled else 'Rule-based analyzer' }}</span>
+        </div>
+        <p class="muted mb-0">
+            Rule-based analysis of team activity, PR hygiene, issue backlog, commit quality
+            and bus factor. Analysis output is stored locally and never modifies the repository.
+        </p>
+        <div class="mt-3">
+            <button type="button" class="btn btn-pulse btn-sm" id="analyzeRepoBtn">Analyze Repository</button>
+            <span class="muted small ms-2" id="repoAnalysisStatus"></span>
+        </div>
+        <div id="repoAnalysisResult" class="mt-3"></div>
+    </div>
+
+    <div class="glass card-pulse mb-4">
+        <div class="card-header-row">
+            <h2>AI Code Analysis</h2>
+            <span class="badge badge-glass">{{ 'Claude AI' if ai_enabled else 'Rule-based scanner' }}</span>
+        </div>
+        <p class="muted mb-0">
+            Analyze any file in {{ report.repo.name }} for bugs, security issues and bad practices.
+            AI output is stored locally and never modifies the repository.
+        </p>
+        <form method="post" action="{{ url_for('analyze_file') }}" class="d-flex gap-2 flex-wrap mt-3">
+            <input name="path" class="form-control form-control-sm" style="max-width: 340px" placeholder="path/to/file.py" required>
+            <input name="ref" class="form-control form-control-sm" style="max-width: 160px" placeholder="branch (default)">
+            <button type="submit" class="btn btn-pulse btn-sm">Analyze</button>
+        </form>
+    </div>
+
+    <div class="glass card-pulse">
+        <div class="card-header-row">
+            <h2>Recent Analyses</h2>
+            <span class="badge badge-glass">{{ ai_analyses|length }}</span>
+        </div>
+        {% for a in ai_analyses %}
+        <div class="suggestion-card prio-{{ (a.result.severity)|lower }} mb-2">
+            <div class="sugg-top">
+                <span class="badge badge-prio">{{ a.result.severity|upper }}</span>
+                <span class="muted small">{{ a.created_at[:16].replace('T', ' ') }} · {{ a.kind }} · {{ a.target }}</span>
+            </div>
+            <h3 class="h6 mb-1">{{ a.result.problem|default(a.result.summary|default('')) }}</h3>
+            {% if a.result.explanation %}<p class="sugg-detail muted mb-0">{{ a.result.explanation }}</p>{% endif %}
+            {% if a.result.engine %}<small class="muted">engine: {{ a.result.engine }}</small>{% endif %}
+        </div>
+        {% else %}
+        <p class="muted p-3 mb-0">No analyses yet. Run an analysis above or analyze a PR / issue.</p>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- ================================================================
+     TAB 8: AI FIXES
+================================================================ -->
+<section class="tab-pane" id="tab-ai-fixes">
+    <div class="glass card-pulse mb-4">
+        <div class="card-header-row">
+            <h2>AI Auto-Fix</h2>
+            <span class="badge badge-glass">reviewable PRs only</span>
+        </div>
+        <p class="muted mb-0">
+            The AI analyzes a file, generates a fix, commits it to a new
+            <code>ai-fix/…</code> branch and opens a pull request.
+            <strong>It never merges and never touches the default branch.</strong>
+        </p>
+        <form method="post" action="{{ url_for('ai_fix_route') }}" id="aiFixForm" class="d-flex gap-2 flex-wrap mt-3">
+            <input name="path" class="form-control form-control-sm" style="max-width: 340px" placeholder="path/to/file.py" required>
+            <input name="issue_label" class="form-control form-control-sm" style="max-width: 220px" placeholder="Short issue description">
+            <button type="submit" class="btn btn-pulse btn-sm" id="aiFixBtn">Generate Fix PR</button>
+        </form>
+        <p class="muted small mt-2 mb-0">
+            This opens a reviewable pull request on an <code>ai-fix/…</code> branch. It never
+            merges and never touches the default branch. You will be asked to confirm before
+            the request is sent.
+        </p>
+    </div>
+
+    <div class="glass card-pulse">
+        <div class="card-header-row">
+            <h2>Fix Attempts</h2>
+            <span class="badge badge-glass">{{ fix_attempts|length }}</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-pulse align-middle">
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>File</th>
+                        <th>Branch</th>
+                        <th>PR</th>
+                        <th>Validation</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in fix_attempts %}
+                    <tr class="hover-row">
+                        <td><span class="badge badge-status st-{{ f.status }}">{{ f.status|replace('_', ' ') }}</span></td>
+                        <td><code>{{ f.path }}</code></td>
+                        <td><code>{{ f.branch }}</code></td>
+                        <td>{% if f.pr_url %}<a href="{{ f.pr_url }}" target="_blank" rel="noopener">PR</a>{% else %}—{% endif %}</td>
+                        <td class="muted">{{ f.validation or f.error or '—' }}</td>
+                        <td class="muted">{{ (f.created_at or '')[:16].replace('T', ' ') }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" class="muted text-center py-4">No fix attempts yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<!-- ================================================================
+     TAB 9: COACHING
+================================================================ -->
+<section class="tab-pane" id="tab-coaching">
+    <div class="glass card-pulse mb-4">
+        <div class="card-header-row">
+            <h2>Coaching Suggestions</h2>
+            <span class="badge badge-glass">{{ 'Claude AI' if ai_enabled else 'Rule-based' }}</span>
+        </div>
+        <p class="muted mb-0">
+            {% if ai_enabled %}
+                Personalized suggestions generated by Claude based on {{ activity_window }} days of activity.
+            {% else %}
+                Rule-based suggestions (add <code>ANTHROPIC_API_KEY</code> to .env for AI coaching).
+            {% endif %}
+        </p>
+    </div>
+
+    <div class="row g-4">
+        {% for s in suggestions %}
+        <div class="col-md-6 col-xl-4">
+            <div class="glass card-pulse suggestion-card prio-{{ s.priority|lower }}">
+                <div class="sugg-top">
+                    <span class="badge badge-prio">{{ s.priority }}</span>
+                    <span class="muted small">{{ s.category }}</span>
+                </div>
+                <h3>{{ s.member }}</h3>
+                <p class="sugg-summary">{{ s.summary }}</p>
+                <p class="sugg-detail muted">{{ s.detail }}</p>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-12">
+            <div class="glass p-4 text-center muted">
+                No suggestions yet — load some contributors on the Team Members tab.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- ================================================================
+     TAB 10: SECURITY SCANNER
+================================================================ -->
+<section class="tab-pane" id="tab-scanner">
+    <div class="glass card-pulse mb-4">
+        <div class="card-header-row">
+            <h2>Static Security Scanner</h2>
+        </div>
+        <div class="scanner-controls">
+            <form method="post" action="{{ url_for('run_scan') }}" class="d-flex gap-2 flex-wrap">
+                <select name="target" class="form-select form-select-sm scan-target">
+                    <option value="repo">Scan GitHub repo ({{ report.repo.name }})</option>
+                    <option value="local">Scan local project source</option>
+                </select>
+                <button type="submit" class="btn btn-pulse btn-sm" id="scanBtn">Run Scan</button>
+            </form>
+            <span class="muted small">Regex-based static scan: secrets, injection, dangerous patterns.</span>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="glass card-pulse stat-card">
+                <div class="stat-icon ic-red">✖</div>
+                <div class="stat-body">
+                    <span class="stat-value">{{ scan_summary.CRITICAL }}</span>
+                    <span class="stat-label">Critical</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="glass card-pulse stat-card">
+                <div class="stat-icon ic-orange">!</div>
+                <div class="stat-body">
+                    <span class="stat-value">{{ scan_summary.HIGH }}</span>
+                    <span class="stat-label">High</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="glass card-pulse stat-card">
+                <div class="stat-icon ic-blue">i</div>
+                <div class="stat-body">
+                    <span class="stat-value">{{ scan_summary.MEDIUM }}</span>
+                    <span class="stat-label">Medium</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="glass card-pulse stat-card">
+                <div class="stat-icon ic-green">·</div>
+                <div class="stat-body">
+                    <span class="stat-value">{{ scan_summary.LOW }}</span>
+                    <span class="stat-label">Low</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="glass card-pulse">
+        <div class="card-header-row">
+            <h2>Findings</h2>
+            <span class="badge badge-glass">{{ scan_findings|length }} total</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-pulse align-middle">
+                <thead>
+                    <tr>
+                        <th>Severity</th>
+                        <th>Rule</th>
+                        <th>File</th>
+                        <th class="text-center">Line</th>
+                        <th>Issue</th>
+                        <th>Recommendation</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in scan_findings %}
+                    <tr class="hover-row sev-{{ f.severity|lower }}">
+                        <td><span class="badge badge-sev sev-{{ f.severity|lower }}">{{ f.severity }}</span></td>
+                        <td><code>{{ f.rule_id }}</code></td>
+                        <td class="file-cell" title="{{ f.filename }}">{{ f.filename }}</td>
+                        <td class="text-center">{{ f.line_number }}</td>
+                        <td class="find-desc">{{ f.description }}</td>
+                        <td class="find-rec muted">{{ f.recommendation }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="muted text-center py-4">
+                            No findings yet. Run a scan to inspect code for risky patterns.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block page_title %}Settings{% endblock %}
+
+{% block content %}
+<div class="glass card-pulse mb-4">
+    <div class="card-header-row">
+        <h2>Settings</h2>
+        <span class="badge badge-glass">Configuration</span>
+    </div>
+    <p class="muted mb-0">Manage your GitPulse preferences and view system configuration.</p>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="glass card-pulse h-100">
+            <div class="settings-section">
+                <h3>Profile</h3>
+                <p>Your GitHub account information.</p>
+                <div class="settings-row">
+                    <span class="settings-label">Username</span>
+                    <span class="settings-value">@{{ github_user }}</span>
+                </div>
+                <div class="settings-row">
+                    <span class="settings-label">Auth Method</span>
+                    <span class="settings-value">
+                        <span class="badge badge-glass">{{ auth_method|upper }}</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="glass card-pulse h-100">
+            <div class="settings-section">
+                <h3>GitHub Connection</h3>
+                <p>Current repository and GitHub API connection status.</p>
+                <div class="settings-row">
+                    <span class="settings-label">Current Repository</span>
+                    <span class="settings-value">{{ current_repo or 'None selected' }}</span>
+                </div>
+                <div class="settings-row">
+                    <span class="settings-label">Webhook Configured</span>
+                    <span class="settings-value">
+                        {% if webhook_configured %}
+                            <span class="badge badge-status st-active">Yes</span>
+                        {% else %}
+                            <span class="badge badge-status st-inactive">No</span>
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="glass card-pulse h-100">
+            <div class="settings-section">
+                <h3>AI Settings</h3>
+                <p>AI analysis and coaching configuration.</p>
+                <div class="settings-row">
+                    <span class="settings-label">AI Provider</span>
+                    <span class="settings-value">
+                        {% if ai_enabled %}
+                            <span class="badge badge-status st-active">Claude AI</span>
+                        {% else %}
+                            <span class="badge badge-off">Rule-based (no API key)</span>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="settings-row">
+                    <span class="settings-label">Analysis Engine</span>
+                    <span class="settings-value">{{ 'Claude + Rule-based' if ai_enabled else 'Rule-based only' }}</span>
+                </div>
+                <div class="settings-row">
+                    <span class="settings-label">Coaching</span>
+                    <span class="settings-value">{{ 'AI-powered' if ai_enabled else 'Rule-based' }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="glass card-pulse h-100">
+            <div class="settings-section">
+                <h3>Activity Settings</h3>
+                <p>Configure the activity monitoring window.</p>
+                <div class="settings-row">
+                    <span class="settings-label">Activity Window</span>
+                    <span class="settings-value">{{ activity_window }} days</span>
+                </div>
+                <div class="settings-row">
+                    <span class="settings-label">Scan Cache</span>
+                    <span class="settings-value">In-memory (per session)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="glass card-pulse mt-4">
+    <div class="settings-section">
+        <h3>System Information</h3>
+        <p>GitPulse platform details.</p>
+        <div class="settings-row">
+            <span class="settings-label">Version</span>
+            <span class="settings-value">GitPulse v1.0.0</span>
+        </div>
+        <div class="settings-row">
+            <span class="settings-label">Framework</span>
+            <span class="settings-value">Flask + Jinja2</span>
+        </div>
+        <div class="settings-row">
+            <span class="settings-label">Frontend</span>
+            <span class="settings-value">Bootstrap 5 + Chart.js</span>
+        </div>
+        <div class="settings-row">
+            <span class="settings-label">Data Storage</span>
+            <span class="settings-value">SQLite (AI analyses, fix attempts, webhooks)</span>
+        </div>
+    </div>
+</div>
+{% endblock %}

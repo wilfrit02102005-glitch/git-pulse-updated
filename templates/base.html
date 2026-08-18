@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}GitPulse{% endblock %} | GitPulse</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+    <!-- GitPulse styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body data-route="{{ request.endpoint or '' }}">
+
+{% if _error_page is defined %}
+    <!-- ========== Error page (404 / 500) ========== -->
+    <div class="error-wrap">
+        <div class="glass error-card">
+            <div class="error-code">{{ _code }}</div>
+            <h1>{{ _message }}</h1>
+            <p>Something went wrong on our side. Head back to the dashboard or log in again.</p>
+            <a href="{{ url_for('index') }}" class="btn btn-pulse">Go Home</a>
+        </div>
+    </div>
+{% elif _bare is defined %}
+    <!-- ========== Bare page (login / 403) - no app shell ========== -->
+    <div class="bare-page">
+        {% block bare_content %}{% endblock %}
+    </div>
+{% else %}
+
+<div class="app-shell">
+
+    <!-- ========== Sidebar ========== -->
+        <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="brand">
+            <div class="brand-logo">GP</div>
+            <div class="brand-name">Git<span>Pulse</span></div>
+        </div>
+
+        <nav class="nav flex-column sidebar-nav">
+            <div class="nav-section">Overview</div>
+            <a class="nav-link" href="{{ url_for('dashboard') }}#tab-overview" data-tab="tab-overview">
+                <span class="nav-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+                </span> Dashboard
+            </a>
+
+            <div class="nav-section">Development</div>
+            <a class="nav-link" href="{{ url_for('dashboard') }}#tab-commits" data-tab="tab-commits">
+                <span class="nav-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><line x1="12" y1="3" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="21"/></svg>
+                </span> Commits
+            </a>
+            <a class="nav-link" href="{{ url_for('dashboard') }}#tab-prs" data-tab="tab-prs">
+                <span class="nav-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>
+                </span> Pull Requests
+            </a>
+            <a class="nav-link" href="{{ url_for('dashboard') }}#tab-issues" data-tab="tab-issues">
+                <span class="nav-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/></svg>
+                </span> Issues
+            </a>
+            <a class="nav-link" href="{{ url_for('code_review') }}" data-page="page-code-review">
+                <span class="nav-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </span> Code Review
+            </a>
+
+            <div class="nav-section">Team</div>
+            <a class="nav-link" href="{{ url_for('team_members') }}" data-page="page-team-members">
+                <span class="nav-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                </span> Contributors
+            </a>
+            <a class="nav-link" href="{{ url_for('dashboard') }}#tab-activity" data-tab="tab-activity">
+                <span class="nav-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                </span> Activity
+            </a>
+            <a class="nav-link" href="{{ url_for('reports') }}" data-page="page-reports">
+                <span class="nav-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                </span> Team Reports
+            </a>
+
+            <div class="nav-section">AI Tools</div>
+            <a class="nav-link" href="{{ url_for('dashboard') }}#tab-ai-analysis" data-tab="tab-ai-analysis">
+                <span class="nav-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.7a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3z"/></svg>
+                </span> AI Analysis
+            </a>
+            <a class="nav-link" href="{{ url_for('dashboard') }}#tab-ai-fixes" data-tab="tab-ai-fixes">
+                <span class="nav-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4.5 4.5 0 0 0-6.1 6.1L3 18l3 3 5.6-5.6a4.5 4.5 0 0 0 6.1-6.1l-3.4 3.4-2.9-2.9z"/></svg>
+                </span> AI Fixes
+            </a>
+            <a class="nav-link" href="{{ url_for('dashboard') }}#tab-coaching" data-tab="tab-coaching">
+                <span class="nav-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.4 1 2.3h6c0-.9.4-1.8 1-2.3A7 7 0 0 0 12 2z"/></svg>
+                </span> Coaching
+            </a>
+
+            <div class="nav-section">Security</div>
+            <a class="nav-link" href="{{ url_for('dashboard') }}#tab-scanner" data-tab="tab-scanner">
+                <span class="nav-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                </span> Security Scanner
+            </a>
+
+            <div class="nav-section">System</div>
+            <a class="nav-link" href="{{ url_for('notifications') }}" data-page="page-notifications">
+                <span class="nav-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                </span> Notifications
+            </a>
+            <a class="nav-link" href="{{ url_for('settings_page') }}" data-page="page-settings">
+                <span class="nav-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                </span> Settings
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="user-chip">
+                <img class="avatar avatar-sm" src="{{ session.get('github_avatar', url_for('static', filename='images/default-avatar.svg')) }}" alt="avatar">
+                <div class="user-meta">
+                    <strong>@{{ session.get('github_user', 'user') }}</strong>
+                    <span>{{ 'OAuth' if session.get('auth_method') == 'oauth' else 'PAT' }}</span>
+                </div>
+            </div>
+            <a href="{{ url_for('logout') }}" class="btn btn-pulse btn-block btn-sm mt-2">Logout</a>
+        </div>
+    </aside>
+
+    <!-- ========== Main column ========== -->
+    <div class="main">
+
+        <!-- Topbar -->
+        <header class="topbar">
+            <button class="btn btn-icon sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">☰</button>
+            <h1 class="page-title">{% block page_title %}Dashboard{% endblock %}</h1>
+            <div class="topbar-right">
+                {% if session.get('github_user') %}
+                <div class="repo-selector">
+                    <span class="repo-selector-label">Repo</span>
+                    <select id="repoSelect" class="form-select form-select-sm repo-select"
+                            data-current="{{ selected_repo|default('') }}"
+                            title="Switch the repository GitPulse analyzes"
+                            aria-label="Select repository">
+                        <option value="{{ selected_repo|default('') }}">
+                            {{ selected_repo|default('Select a repository…') }}
+                        </option>
+                    </select>
+                </div>
+                {% endif %}
+                {% block topbar_extra %}{% endblock %}
+                <span class="badge badge-glass">{% block badge %}{% endblock %}</span>
+            </div>
+        </header>
+
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-stack">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <main class="content">
+            {% block content %}{% endblock %}
+        </main>
+
+    </div>
+</div>
+
+<!-- Global detail-modal container (populated by dashboard.js) -->
+<div id="gitpulseModal" class="gp-modal" aria-hidden="true">
+    <div class="gp-modal-backdrop" data-gp-close></div>
+    <div class="gp-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="gpModalTitle">
+        <div class="gp-modal-header">
+            <h2 id="gpModalTitle">Detail</h2>
+            <button type="button" class="gp-modal-close" data-gp-close aria-label="Close">×</button>
+        </div>
+        <div class="gp-modal-body" id="gpModalBody"></div>
+        <div class="gp-modal-footer">
+            <a class="btn btn-pulse btn-sm" id="gpModalLink" href="#" target="_blank" rel="noopener">Open on GitHub ↗</a>
+            <button type="button" class="btn btn-outline-secondary btn-sm" data-gp-close>Close</button>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<!-- GitPulse JS -->
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

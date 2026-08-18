@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}{{ page_title }}{% endblock %}
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block badge %}Coming Soon{% endblock %}
+
+{% block content %}
+<div class="coming-wrap">
+    <div class="glass card-pulse coming-card">
+        <div class="coming-icon">{{ icon }}</div>
+        <h2>{{ page_title }}</h2>
+        <p class="muted coming-desc">{{ description }}</p>
+        <span class="badge badge-status badge-off">Coming Soon</span>
+    </div>
+</div>
+{% endblock %}

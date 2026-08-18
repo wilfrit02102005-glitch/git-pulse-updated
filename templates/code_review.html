@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+{% block title %}Code Review{% endblock %}
+{% block page_title %}
+<a class="btn btn-back btn-back-label" href="{{ url_for('dashboard') }}"
+   title="Back to Team Dashboard" aria-label="Back to Team Dashboard">← Back</a>
+Code Review
+{% endblock %}
+{% block badge %}{{ repo_name or 'no data' }}{% endblock %}
+
+{% block content %}
+
+{% if error or not report %}
+    <div class="glass p-4">
+        <h3>Unable to load code review</h3>
+        <p class="muted">{{ error or 'No repository selected. Pick a repository from the selector in the top bar.' }}</p>
+    </div>
+{% else %}
+
+<!-- ================================================================
+     STATS
+=============================================================== -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="glass card-pulse stat-card">
+            <div class="stat-icon ic-blue">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>
+            </div>
+            <div class="stat-body">
+                <span class="stat-value">{{ total_prs }}</span>
+                <span class="stat-label">Total PRs</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="glass card-pulse stat-card">
+            <div class="stat-icon ic-orange">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/></svg>
+            </div>
+            <div class="stat-body">
+                <span class="stat-value">{{ needs_review }}</span>
+                <span class="stat-label">Needs Review</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="glass card-pulse stat-card">
+            <div class="stat-icon ic-green">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="stat-body">
+                <span class="stat-value">{{ approved_count }}</span>
+                <span class="stat-label">Approved</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="glass card-pulse stat-card">
+            <div class="stat-icon ic-red">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+            <div class="stat-body">
+                <span class="stat-value">{{ changes_requested }}</span>
+                <span class="stat-label">Changes Requested</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ================================================================
+     PR LIST + DETAIL
+=============================================================== -->
+<div class="row g-4">
+    <!-- PR list -->
+    <div class="col-lg-5">
+        <div class="glass card-pulse">
+            <div class="card-header-row">
+                <h2>Pull Requests</h2>
+                <span class="badge badge-glass"><span id="crCount">{{ prs|length }}</span> total</span>
+            </div>
+            <div class="p-3 pb-1 border-bottom border-light">
+                <div class="row g-2">
+                    <div class="col-12">
+                        <input id="crSearch" class="form-control form-control-sm" type="search" placeholder="Search PRs…" aria-label="Search pull requests">
+                    </div>
+                    <div class="col-6">
+                        <select id="crState" class="form-select form-select-sm" aria-label="Filter by state">
+                            <option value="">All states</option>
+                            <option value="open">Open</option>
+                            <option value="merged">Merged</option>
+                            <option value="closed">Closed</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <select id="crReview" class="form-select form-select-sm" aria-label="Filter by review status">
+                            <option value="">All reviews</option>
+                            <option value="no_reviews">Needs review</option>
+                            <option value="approved">Approved</option>
+                            <option value="changes_requested">Changes requested</option>
+                            <option value="reviewed">Reviewed</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div id="crList">
+                {% for pr in prs %}
+                <div class="cr-pr-item hover-row" data-pr="{{ pr.number }}" data-state="{{ 'merged' if pr.merged else pr.state }}" data-review="{{ pr.review_status }}" data-search="{{ (pr.title|default('') ~ ' #' ~ pr.number ~ ' ' ~ pr.author|default(''))|lower }}">
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                        <div class="flex-grow-1 min-width-0">
+                            <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+                                <code>#{{ pr.number }}</code>
+                                {% if pr.merged %}<span class="badge badge-status st-merged">Merged</span>
+                                {% elif pr.state == 'open' %}<span class="badge badge-status st-open">Open</span>
+                                {% else %}<span class="badge badge-status st-closed">Closed</span>{% endif %}
+                                <span class="badge badge-glass cr-review-badge cr-rev-{{ pr.review_status }}">{{ pr.review_status|replace('_', ' ') }}</span>
+                            </div>
+                            <div class="find-desc mb-1">{{ pr.title }}</div>
+                            <div class="muted small">
+                                <strong>@{{ pr.author }}</strong> · {{ (pr.updated_at or '')[:10] }}
+                                · <span class="text-success">+{{ pr.additions|default(0) }}</span> <span class="text-danger">−{{ pr.deletions|default(0) }}</span>
+                                ({{ pr.changed_files|default(0) }} files)
+                            </div>
+                            {% if pr.reviewers %}
+                            <div class="muted small mt-1">Reviewers: {{ pr.reviewers|join(', ') }}</div>
+                            {% endif %}
+                        </div>
+                        <span class="text-muted cr-chevron">›</span>
+                    </div>
+                </div>
+                {% else %}
+                <div class="p-4 text-center muted">No pull requests found.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- PR detail panel -->
+    <div class="col-lg-7">
+        <div class="glass card-pulse" id="crDetailPanel">
+            <div class="card-header-row">
+                <h2 id="crDetailTitle">Select a PR</h2>
+                <a class="btn btn-pulse btn-sm d-none" id="crOpenGithub" href="#" target="_blank" rel="noopener">Open on GitHub ↗</a>
+            </div>
+            <div id="crDetailBody" class="p-3">
+                <p class="muted text-center py-5">Click a pull request on the left to view its details, files changed, reviews and AI analysis.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    "use strict";
+
+    var list = document.getElementById("crList");
+    var search = document.getElementById("crSearch");
+    var stateSel = document.getElementById("crState");
+    var reviewSel = document.getElementById("crReview");
+    var countEl = document.getElementById("crCount");
+    var detailTitle = document.getElementById("crDetailTitle");
+    var detailBody = document.getElementById("crDetailBody");
+    var openGithub = document.getElementById("crOpenGithub");
+    var activeItem = null;
+
+    function esc(v) {
+        return String(v == null ? "" : v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function applyFilters() {
+        var q = (search && search.value.trim().toLowerCase()) || "";
+        var state = (stateSel && stateSel.value) || "";
+        var review = (reviewSel && reviewSel.value) || "";
+        var visible = 0;
+        list.querySelectorAll(".cr-pr-item").forEach(function (item) {
+            var show = true;
+            if (state && item.dataset.state !== state) show = false;
+            if (show && review && item.dataset.review !== review) show = false;
+            if (show && q && item.dataset.search.indexOf(q) === -1) show = false;
+            item.style.display = show ? "" : "none";
+            if (show) visible += 1;
+        });
+        if (countEl) countEl.textContent = String(visible);
+    }
+
+    if (search) search.addEventListener("input", applyFilters);
+    if (stateSel) stateSel.addEventListener("change", applyFilters);
+    if (reviewSel) reviewSel.addEventListener("change", applyFilters);
+
+    if (list) {
+        list.addEventListener("click", function (event) {
+            var item = event.target.closest(".cr-pr-item");
+            if (!item) return;
+            if (activeItem) activeItem.classList.remove("cr-active");
+            activeItem = item;
+            item.classList.add("cr-active");
+            loadPrDetail(item.dataset.pr);
+        });
+    }
+
+    function loadPrDetail(number) {
+        detailTitle.textContent = "PR #" + number + "…";
+        detailBody.innerHTML = '<div class="text-center py-4"><div class="loading-spinner"></div><div class="muted small mt-2">Loading PR details…</div></div>';
+        openGithub.classList.add("d-none");
+        openGithub.href = "#";
+
+        fetch("/api/code-review/pr/" + encodeURIComponent(number))
+            .then(function (resp) { return resp.json().catch(function () { return null; }); })
+            .then(function (data) {
+                if (!data || data.error) {
+                    detailBody.innerHTML = '<p class="muted">' + esc((data && data.error) || "Unable to load PR details.") + '</p>';
+                    detailTitle.textContent = "PR #" + number;
+                    return;
+                }
+                detailTitle.textContent = "PR #" + data.number + " · " + data.title;
+                openGithub.href = data.url || "#";
+                openGithub.classList.remove("d-none");
+
+                var stateBadge = data.merged
+                    ? "<span class='badge badge-status st-merged'>Merged</span>"
+                    : data.state === "open"
+                        ? "<span class='badge badge-status st-open'>Open</span>"
+                        : "<span class='badge badge-status st-closed'>Closed</span>";
+
+                var reviewBadge = "<span class='badge badge-glass cr-review-badge cr-rev-" + esc(data.review_status) + "'>" + esc(data.review_status.replace(/_/g, " ")) + "</span>";
+
+                var commitsHtml = (data.commits || []).map(function (c) {
+                    return "<tr><td><code>" + esc(c.sha) + "</code></td><td class='find-desc'>" + esc(c.message) + "</td><td class='muted'>" + esc((c.date || "").slice(0, 10)) + "</td></tr>";
+                }).join("");
+
+                var filesHtml = (data.files || []).map(function (f) {
+                    var statusClass = f.status === "added" ? "text-success" : (f.status === "removed" ? "text-danger" : "");
+                    return "<tr><td class='file-cell'><code>" + esc(f.filename) + "</code></td>" +
+                        "<td class='text-center'><span class='badge badge-glass'>" + esc(f.status) + "</span></td>" +
+                        "<td class='text-center text-success'>+" + esc(f.additions) + "</td>" +
+                        "<td class='text-center text-danger'>−" + esc(f.deletions) + "</td></tr>";
+                }).join("");
+
+                var reviewsHtml = (data.reviews || []).map(function (r) {
+                    var stateClass = r.state === "APPROVED" ? "st-merged" : (r.state === "CHANGES_REQUESTED" ? "st-closed" : "");
+                    return "<div class='mb-2 p-2 border-bottom border-light'>" +
+                        "<div class='d-flex align-items-center gap-2 flex-wrap mb-1'>" +
+                        "<strong>@" + esc(r.author) + "</strong>" +
+                        "<span class='badge badge-status " + stateClass + "'>" + esc(r.state) + "</span>" +
+                        "<span class='muted small'>" + esc((r.submitted_at || "").slice(0, 10)) + "</span>" +
+                        "</div>" +
+                        (r.body ? "<p class='muted small mb-0'>" + esc(r.body) + "</p>" : "") +
+                        "</div>";
+                }).join("");
+
+                var aiBlock = "";
+                if (data.ai && data.ai.result) {
+                    var sev = data.ai.result.severity || "";
+                    aiBlock = "<div class='glass card-pulse p-3 mb-3'>" +
+                        "<div class='d-flex align-items-center gap-2 flex-wrap mb-2'>" +
+                        "<strong>AI Analysis</strong>" +
+                        "<span class='badge badge-glass badge-sev sev-" + esc(sev) + "'>" + esc(sev) + "</span>" +
+                        "<span class='muted small'>engine: " + esc(data.ai.result.engine || "rule-based") + "</span>" +
+                        "</div>" +
+                        (data.ai.result.problem ? "<p class='mb-1'><strong>Issue:</strong> " + esc(data.ai.result.problem) + "</p>" : "") +
+                        (data.ai.result.explanation ? "<p class='mb-1'>" + esc(data.ai.result.explanation) + "</p>" : "") +
+                        ((data.ai.result.suggestions || []).length ? "<ul class='mb-0'>" + data.ai.result.suggestions.map(function (s) { return "<li>" + esc(s) + "</li>"; }).join("") + "</ul>" : "") +
+                        "</div>";
+                }
+
+                detailBody.innerHTML =
+                    "<div class='d-flex align-items-center gap-2 flex-wrap mb-3'>" + stateBadge + reviewBadge +
+                    "<span><strong>Author</strong> @" + esc(data.author) + "</span>" +
+                    "<span><strong>Created</strong> " + esc((data.created_at || "").slice(0, 10)) + "</span>" +
+                    "<span><strong>Changes</strong> +" + esc(data.additions) + " / −" + esc(data.deletions) + " (" + esc(data.changed_files) + " files)</span>" +
+                    "</div>" +
+                    (data.base ? "<p class='muted mb-2'><code>" + esc(data.base) + "</code> ← <code>" + esc(data.head) + "</code></p>" : "") +
+                    (data.body ? "<div class='find-desc mb-3'>" + esc(data.body) + "</div>" : "") +
+                    aiBlock +
+                    (commitsHtml ? "<h3 class='h6 mt-3'>Commits (" + esc(data.commits_count) + ")</h3><div class='table-responsive'><table class='table table-pulse table-sm align-middle'><thead><tr><th>SHA</th><th>Message</th><th>Date</th></tr></thead><tbody>" + commitsHtml + "</tbody></table></div>" : "") +
+                    (filesHtml ? "<h3 class='h6 mt-3'>Files Changed (" + esc(data.files.length) + ")</h3><div class='table-responsive'><table class='table table-pulse table-sm align-middle'><thead><tr><th>File</th><th class='text-center'>Status</th><th class='text-center'>+</th><th class='text-center'>−</th></tr></thead><tbody>" + filesHtml + "</tbody></table></div>" : "") +
+                    (reviewsHtml ? "<h3 class='h6 mt-3'>Reviews</h3>" + reviewsHtml : "<p class='muted mt-3'>No reviews yet.</p>");
+            })
+            .catch(function () {
+                detailBody.innerHTML = '<p class="muted">Network error while loading PR details.</p>';
+                detailTitle.textContent = "PR #" + number;
+            });
+    }
+})();
+</script>
+<style>
+    .cr-pr-item { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.06); cursor: pointer; transition: background 0.15s; }
+    .cr-pr-item:hover { background: rgba(255,255,255,0.04); }
+    .cr-pr-item.cr-active { background: rgba(74,168,255,0.10); border-left: 3px solid var(--blue); }
+    .cr-chevron { font-size: 1.3rem; line-height: 1; opacity: 0.4; }
+    .cr-review-badge { font-size: 0.65rem; }
+    .cr-rev-no_reviews { background: rgba(243,156,18,0.18); color: var(--orange); }
+    .cr-rev-approved { background: rgba(46,204,113,0.18); color: var(--green); }
+    .cr-rev-changes_requested { background: rgba(255,82,82,0.18); color: var(--red); }
+    .cr-rev-reviewed { background: rgba(74,168,255,0.18); color: var(--blue); }
+    .min-width-0 { min-width: 0; }
+    #crList { max-height: 65vh; overflow-y: auto; }
+</style>
+{% endblock %}
